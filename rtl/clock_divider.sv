@@ -1,13 +1,15 @@
 module clock_divider (input in_clk,
                       input rst,
-                      output out_clk)
-[9:0] logic counter;
+                      output reg out_clk);
+logic [8:0] counter;
 
-always_ff (@ posedge in_clk, @ posedge rst)
+always_ff @(posedge in_clk, posedge rst)
 begin
     if (rst)
+    begin
         counter <= 0;
         out_clk <= 0;
+    end
     else
     begin
         counter <= counter + 1;
@@ -15,6 +17,7 @@ begin
     
     if (counter == 500)
     begin
+        counter <= 0;
         out_clk <= ~out_clk;
     end
 end

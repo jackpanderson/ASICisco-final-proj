@@ -3,7 +3,7 @@ module wah #(parameter SAMPLE_WIDTH = 24)
             input system_clock, //96MHz
             input rst,   //Active high reset
             input [3:0]                  filter_strength_ratio,
-             output [SAMPLE_WIDTH - 1: 0] filter_out)
+             output [SAMPLE_WIDTH - 1: 0] filter_out);
     
     // Sample 96KHz clock
     logic sample_clock;
@@ -24,7 +24,7 @@ module wah #(parameter SAMPLE_WIDTH = 24)
     
     cutoff_freq_unit cutoff (.env_avg(env_average),
                              .filter_strength_ratio(filter_strength_ratio),
-                             .cutoff_freq(cutoff_freq))
+                             .cutoff_freq(cutoff_freq));
 
 
 endmodule

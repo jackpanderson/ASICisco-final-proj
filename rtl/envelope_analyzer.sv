@@ -2,25 +2,27 @@ module envelope_analyzer #(parameter SAMPLE_WIDTH = 24)
                          (input [SAMPLE_WIDTH - 1 : 0] sample_in,
                           input sample_clock, //96KHz
                           input rst,       //ACtive HIGH!!!11!!!!!1!!1
-                          output [SAMPLE_WIDTH - 1:0]  out_sample)
+                          output reg [SAMPLE_WIDTH - 1:0]  out_sample);
 
     logic [SAMPLE_WIDTH - 1 : 0] prev_samples [7:0]; 
-    logic [SAMPLE_WIDTH - 1 + 3] aCUMulator;
+    logic [SAMPLE_WIDTH - 1 + 3 : 0] aCUMulator, shift_acum;
 
     always_comb 
     begin
-        assign aCUMulator = prev_samples[0] +
-                            prev_samples[1] + 
-                            prev_samples[2] +
-                            prev_samples[3] + 
-                            prev_samples[4] +
-                            prev_samples[5] +
-                            prev_samples[6] +
-                            prev_samples[7];
-        assign out_sample = (aCUMulator >> 3)[SAMPLE_WIDTH -1:0];   
+        assign aCUMulator = {3'b0, prev_samples[0]} +
+                            {3'b0, prev_samples[1]} +
+                            {3'b0, prev_samples[2]} +
+                            {3'b0, prev_samples[3]} +
+                            {3'b0, prev_samples[4]} +
+                            {3'b0, prev_samples[5]} +
+                            {3'b0, prev_samples[6]} +
+                            {3'b0, prev_samples[7]};
+                            
+        assign shift_acum = aCUMulator >> 3;
+        assign out_sample = shift_acum[SAMPLE_WIDTH - 1:0];   
     end
 
-    always_ff (@ posedge sample_clock, posedge rst) 
+    always_ff @ (posedge sample_clock, posedge rst) 
     begin
         if (rst) 
         begin
@@ -32,7 +34,6 @@ module envelope_analyzer #(parameter SAMPLE_WIDTH = 24)
             prev_samples[5] <= 0;
             prev_samples[6] <= 0;
             prev_samples[7] <= 0;
-            aCUMulator <= 0;
         end
 
         else 
