@@ -1,85 +1,104 @@
-// TEST THIS!! THIS IS CHAT
+// Module takes in an angle in radians in Q8.16 fixed point form, outputs sin and cosine of that angle in ~16 cycles
 
-
-module cordic_sincos #(
-    parameter integer ITERATIONS = 16,     // Number of CORDIC iterations
-    parameter integer DATA_WIDTH = 32      // Fixed-point width (Q1.31 suggested)
+module cordic_sin_cos #(
+    parameter logic [4:0] ITERATIONS = 5'd16
 )(
-    input  logic signed [DATA_WIDTH-1:0] angle, // Input angle in radians (Q1.31, scaled to ±π/2)
-    input  logic clk,
-    input  logic rst,
-    input  logic start,                      // Start signal
-    output logic done,                       // Done signal
-    output logic signed [DATA_WIDTH-1:0] sin_out,
-    output logic signed [DATA_WIDTH-1:0] cos_out
+    input  logic             clk, //Main system clock
+    input  logic             reset, //Active high reset
+    input  logic             start, // Indicates a request to start calculation
+    input  logic signed [23:0] angle_in, // Q8.16
+    output logic             ready,  // output high when sin/cos output is ready
+    output logic signed [23:0] sin_out,  // Q8.16
+    output logic signed [23:0] cos_out   // Q8.16
 );
 
-    // === Internal Constants ===
-    // Arctangent lookup table (in Q1.31 format)
-    logic signed [DATA_WIDTH-1:0] atan_table[0:ITERATIONS-1];
+    localparam logic [23:0] CORDIC_GAIN = 24'h0009B74; // ≈ 0.60725293 in Q8.16
 
+    logic signed [23:0] atan_table [0:15];
     initial begin
-        integer i;
-        for (i = 0; i < ITERATIONS; i = i + 1) begin
-            atan_table[i] = $rtoi($atan(1.0 / (1 << i)) * (1 << 31) / $acos(-1)); // π radians = 2^31
-        end
+        atan_table[ 0] = 24'h0000C90F; //Store all of the needed arctans for CORDIC calculation
+        atan_table[ 1] = 24'h000076B1;
+        atan_table[ 2] = 24'h00003EB6;
+        atan_table[ 3] = 24'h00001FD5;
+        atan_table[ 4] = 24'h000010FB;
+        atan_table[ 5] = 24'h00000821;
+        atan_table[ 6] = 24'h00000410;
+        atan_table[ 7] = 24'h00000208;
+        atan_table[ 8] = 24'h00000104;
+        atan_table[ 9] = 24'h00000082;
+        atan_table[10] = 24'h00000041;
+        atan_table[11] = 24'h00000020;
+        atan_table[12] = 24'h00000010;
+        atan_table[13] = 24'h00000008;
+        atan_table[14] = 24'h00000004;
+        atan_table[15] = 24'h00000002;
     end
 
-    // CORDIC gain compensation constant in Q1.31 (precomputed or constant)
-    localparam signed [DATA_WIDTH-1:0] CORDIC_GAIN = 32'sd1304381788; // ≈ 0.60725293 * 2^31
+    typedef enum logic [1:0] {
+        IDLE, ROTATE, DONE //3 states, waiting for input, doing the CORDIC thing, or done
+    } state_t;
 
-    // === Registers ===
-    logic [4:0] i;
-    logic signed [DATA_WIDTH-1:0] x, y, z;
-    logic running;
+    state_t state;
+    logic [4:0] i; // index for arctan table
 
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
+    logic signed [23:0] x, y, z; 
+    logic signed [23:0] x_new, y_new, z_new;
+
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
+            state <= IDLE;
             i <= 0;
             x <= 0;
             y <= 0;
             z <= 0;
-            running <= 0;
-            done <= 0;
+            ready <= 0;
         end else begin
-            if (start && !running) begin
-                // Initialize vector (CORDIC_GAIN, 0), rotate by angle
-                x <= CORDIC_GAIN;
-                y <= 0;
-                z <= angle;
-                i <= 0;
-                running <= 1;
-                done <= 0;
-            end else if (running) begin
-                logic signed [DATA_WIDTH-1:0] x_shift, y_shift;
-
-                x_shift = x >>> i;
-                y_shift = y >>> i;
-
-                if (z >= 0) begin
-                    x <= x - y_shift;
-                    y <= y + x_shift;
-                    z <= z - atan_table[i];
-                end else begin
-                    x <= x + y_shift;
-                    y <= y - x_shift;
-                    z <= z + atan_table[i];
+            case (state)
+                IDLE: begin
+                    ready <= 0;
+                    if (start) begin
+                        x <= CORDIC_GAIN;
+                        y <= 0;
+                        z <= angle_in;
+                        i <= 0;
+                        state <= ROTATE;
+                    end
                 end
 
-                i <= i + 1;
-
-                if (i == ITERATIONS - 1) begin
-                    running <= 0;
-                    done <= 1;
+                ROTATE: begin
+                    cos_out <= 0;
+                    sin_out <= 0;
+                    if (i < ITERATIONS) begin
+                        if (z[23] == 0) begin
+                            x_new = x - (y >>> i);
+                            y_new = y + (x >>> i);
+                            z_new = z - atan_table[i[3:0]];
+                        end else begin
+                            x_new = x + (y >>> i);
+                            y_new = y - (x >>> i);
+                            z_new = z + atan_table[i[3:0]];
+                        end
+                        x <= x_new;
+                        y <= y_new;
+                        z <= z_new;
+                        i <= i + 1;
+                    end else begin
+                        state <= DONE;
+                    end
                 end
-            end else begin
-                done <= 0;
-            end
+
+                DONE: begin
+                    cos_out <= x;
+                    sin_out <= y;
+                    ready <= 1;
+                    state <= IDLE;
+                end
+
+                default: begin
+                    state <= IDLE;
+                end
+            endcase
         end
     end
-
-    // Output results
-    assign cos_out = x;
-    assign sin_out = y;
 
 endmodule
