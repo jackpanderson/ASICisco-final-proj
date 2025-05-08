@@ -23,8 +23,8 @@ module wah_tb;
     );
 
     initial begin
-    $dumpfile("waveform.vcd");   // Name of your VCD file
-    $dumpvars(0, wah_tb);        // Dump everything in wah_tb hierarchy
+    $dumpfile("waveform.vcd");   
+    $dumpvars(0, wah_tb);     
     end
 
     // Clock generation (96 MHz)
