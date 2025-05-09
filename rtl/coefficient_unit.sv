@@ -3,7 +3,7 @@ module coefficient_unit #(
     //parameter FC_MAX = 1024, //
     //parameter FC_MIN = 69, //0.00052083333
     parameter LOWPASS_Q_FACTOR = 1,
-    parameter logic [23:0] ONE_IN_FIXED_POINT = 010000,
+    parameter logic signed [23:0] ONE_IN_FIXED_POINT = 010000,
     parameter F_SAMP = 96000
 )(
     input  clk,
@@ -39,7 +39,9 @@ module coefficient_unit #(
     logic signed [23:0] sin_out, cos_out, alpha;
     logic cordic_ready, cordic_start;
 
-    assign alpha = sin_out >>> 1;
+    assign alpha = -(sin_out <<< 1);
+
+   
 
     // Angle scaling (0 to π mapped to 0 to 2^24-1)
     // logic [23:0] angle_scaled = (cutoff_freq * 24'sh800000) / FC_MAX;
@@ -54,8 +56,29 @@ module coefficient_unit #(
         .cos_out(cos_out)
     );
 
+    /////TESTING
+
+    // Define a minimum pole radius (e.g., 0.99 instead of 1.0)
+//localparam logic [23:0] POLE_RADIUS_LIMIT = 24'h7F0000; // Q8.16 value ~0.996 (experimentally adjust)
+
+// Limit alpha to enforce stability
+// Define pole radius limit in signed Q8.16 (e.g., 0.99 = 24'h7F0000)
+localparam logic signed [23:0] POLE_RADIUS_LIMIT = 24'h7F0000; // ~0.996 in Q8.16
+
+// // Signed comparison to clamp alpha
+// logic signed [23:0] alpha_limited;
+// assign alpha_limited = 
+//     (alpha > POLE_RADIUS_LIMIT)  ? POLE_RADIUS_LIMIT :
+//     (alpha < -POLE_RADIUS_LIMIT) ? -POLE_RADIUS_LIMIT :
+//     alpha;
+
+
+    //END
+
+
+
     // Coefficient calculation - PROPERLY SCALED FOR Q8.16
-    always_ff @(posedge sample_clock or posedge reset) 
+    always_ff @(posedge clk or posedge reset) 
     begin
         if (reset) 
         begin
@@ -94,9 +117,9 @@ module coefficient_unit #(
             end
             COEFF_CALC: 
             begin
-                b0 <= (ONE_IN_FIXED_POINT - cos_out) / 2;
+                b0 <= (ONE_IN_FIXED_POINT - cos_out) >>> 1;
                 b1 <= -(ONE_IN_FIXED_POINT - cos_out);
-                b2 <= (ONE_IN_FIXED_POINT - cos_out) / 2;
+                b2 <= (ONE_IN_FIXED_POINT - cos_out) >>> 1;
                 a0 <= ONE_IN_FIXED_POINT + alpha;
                 a1 <= -(cos_out <<< 1);
                 a2 <= ONE_IN_FIXED_POINT - alpha;

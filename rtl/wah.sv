@@ -3,8 +3,8 @@ module wah #(parameter SAMPLE_WIDTH = 24)
             input system_clock, //96MHz
             input rst,   //Active high reset
             input [3:0]                  filter_strength_ratio,
-             output [SAMPLE_WIDTH - 1: 0] filter_out,
-             output ready_out);
+            output [SAMPLE_WIDTH - 1: 0] filter_out,
+            output logic ready_out);
     
     // Sample 96KHz clock
     logic sample_clock;
@@ -81,6 +81,7 @@ module wah #(parameter SAMPLE_WIDTH = 24)
                     if (ready)
                         begin
                             ready_out <= 1;
+                            start <= 0;
                             curr_state <= IDLE;
                         end
                 end
