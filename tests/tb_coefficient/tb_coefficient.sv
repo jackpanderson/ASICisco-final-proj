@@ -3,12 +3,14 @@ module coefficient_unit_tb;
     parameter CLK_PERIOD = 10;
     
     logic clk = 0;
+    logic sample_clock;
     logic reset;
     logic start;
     logic ready;
     logic [SAMPLE_WIDTH-1:0] digital_cutoff_freq;
     logic signed [SAMPLE_WIDTH-1:0] b0, b1, b2, a0, a1, a2;
     
+    clock_divider clocks (.in_clk(clk), .rst(reset), .out_clk(sample_clock));
     coefficient_unit uut (.*);
     
     always #(CLK_PERIOD/2) clk = ~clk;
