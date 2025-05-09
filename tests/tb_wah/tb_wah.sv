@@ -1,64 +1,59 @@
-`timescale 1ns / 1ps
+module tb_wah;
+    parameter SAMPLE_WIDTH = 24;
+    parameter CLK_PERIOD = 10.417; // 96 MHz -> 10.417 ns
 
-module wah_tb;
-
-    // Parameters
-    localparam SAMPLE_WIDTH = 24;
-    localparam CLK_PERIOD = 10.42; // 96MHz clock → ~10.42 ns
-
-    // DUT signals
     logic [SAMPLE_WIDTH-1:0] sample_in;
-    logic system_clock;
-    logic rst;
-    logic [3:0] filter_strength_ratio;
+    logic system_clock = 0;
+    logic rst = 1;
+    logic [3:0] filter_strength_ratio = 4'd8;
     logic [SAMPLE_WIDTH-1:0] filter_out;
+    logic ready_out;
 
-    // Instantiate Device Under Test
-    wah #(.SAMPLE_WIDTH(SAMPLE_WIDTH)) dut (
+    // Instantiate DUT
+    wah dut (
         .sample_in(sample_in),
         .system_clock(system_clock),
         .rst(rst),
         .filter_strength_ratio(filter_strength_ratio),
-        .filter_out(filter_out)
+        .filter_out(filter_out),
+        .ready_out(ready_out)
     );
 
-    initial begin
-    $dumpfile("waveform.vcd");   
-    $dumpvars(0, wah_tb);     
-    end
+    // Generate 96 MHz clock
+    always #(CLK_PERIOD/2) system_clock = ~system_clock;
 
-    // Clock generation (96 MHz)
-    always begin
-        system_clock = 0;
-        #(CLK_PERIOD/2);
-        system_clock = 1;
-        #(CLK_PERIOD/2);
+    // Sample memory
+    logic [SAMPLE_WIDTH-1:0] sample_mem [0:99999]; // Load up to 100k samples
+    int idx = 0;
+
+    // Load samples
+    initial begin
+        $readmemh("wav_data.hex", sample_mem);
     end
 
     // Stimulus
     initial begin
-        // Init values
-        rst = 1;
-        sample_in = 0;
-        filter_strength_ratio = 4'd8;
+        rst <= 1;
+        repeat(10) @(posedge system_clock);
+        rst <= 0;
 
-        // Wait some cycles with reset asserted
-        #100;
-        rst = 0;
-
-        // Simple input waveform
-        repeat (100) begin
-            sample_in = sample_in + 24'd1000;
-            #10417; // ~1 sample per 96kHz → ~10.417 us
+        forever begin
+            @(posedge dut.sample_clock);
+            sample_in <= sample_mem[idx];
+            idx++;
         end
-
-        $finish;
     end
 
-    // Optional: monitor output
+    // Optional: Save output to file
+    integer f;
     initial begin
-        $display("Time\tSample\tFilterOut");
-        $monitor("%0t\t%0d\t%0d", $time, sample_in, filter_out);
+        f = $fopen("filtered_output.hex", "w");
+        forever begin
+            @(posedge dut.sample_clock);
+            if (ready_out) begin
+                $fwrite(f, "%06x\n", filter_out);
+            end
+        end
     end
 
 endmodule
