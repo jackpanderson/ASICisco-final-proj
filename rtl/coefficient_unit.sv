@@ -1,19 +1,34 @@
 module coefficient_unit #(
     parameter SAMPLE_WIDTH = 24,
-    parameter FC_MAX = 1024,
-    parameter FC_MIN = 69
+    //parameter FC_MAX = 1024, //
+    //parameter FC_MIN = 69, //0.00052083333
+    parameter LOWPASS_Q_FACTOR = 1,
+    parameter logic [23:0] ONE_IN_FIXED_POINT = 010000,
+    parameter F_SAMP = 96000
 )(
-    input  logic clk,
+    input  clk,
+    input sample_clock,
     input  logic reset,
     input  logic start,
-    input  logic [SAMPLE_WIDTH-1:0] cutoff_freq,
+    input  logic [SAMPLE_WIDTH-1:0] digital_cutoff_freq,
     output logic ready,
-    output logic signed [SAMPLE_WIDTH-1:0] b0,  // Q8.16
-    output logic signed [SAMPLE_WIDTH-1:0] b1,  // Q8.16
-    output logic signed [SAMPLE_WIDTH-1:0] b2,  // Q8.16
-    output logic signed [SAMPLE_WIDTH-1:0] a1,  // Q8.16
-    output logic signed [SAMPLE_WIDTH-1:0] a2   // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] b0,  // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] b1,  // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] b2,  // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] a0,  // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] a1,  // Q8.16
+    output logic signed [SAMPLE_WIDTH - 1:0] a2   // Q8.16
 );
+
+    logic signed [25:0] b_temp;  // or 31:0 for safety
+
+    typedef enum logic [1:0] {
+    IDLE,       // 2'b00
+    TRIG_CALC,       // 2'b01
+    COEFF_CALC      // 2'b10
+    } state_t;
+
+    state_t curr_state;
 
     // Constants for Q8.16 scaling
     localparam Q16 = 65536;  // 2^16
@@ -21,56 +36,90 @@ module coefficient_unit #(
     localparam MIN_A1 = -2 * Q16;     // -2.0 in Q8.16
 
     // CORDIC outputs (Q1.23 format)
-    logic signed [23:0] sin_out, cos_out;
-    logic cordic_ready;
+    logic signed [23:0] sin_out, cos_out, alpha;
+    logic cordic_ready, cordic_start;
+
+    assign alpha = sin_out >>> 1;
 
     // Angle scaling (0 to π mapped to 0 to 2^24-1)
-    logic [23:0] angle_scaled = (cutoff_freq * 24'sh800000) / FC_MAX;
+    // logic [23:0] angle_scaled = (cutoff_freq * 24'sh800000) / FC_MAX;
 
     cordic_sin_cos #(.ITERATIONS(16)) cordic (
         .clk(clk),
         .reset(reset),
-        .start(start),
-        .angle_in(angle_scaled),
+        .start(cordic_start),
+        .angle_in(digital_cutoff_freq),
         .ready(cordic_ready),
         .sin_out(sin_out),
         .cos_out(cos_out)
     );
 
     // Coefficient calculation - PROPERLY SCALED FOR Q8.16
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
-            {b0, b1, b2, a1, a2} <= '0;
-            ready <= 0;
-        end
-        else if (cordic_ready) begin
-            // Bandpass coefficients (example)
-            b0 <= (sin_out >>> 7);  // Q1.23 -> Q8.16 (/128)
+    always_ff @(posedge sample_clock or posedge reset) 
+    begin
+        if (reset) 
+        begin
+            a0 <= 0;
+            a1 <= 0;
+            a2 <= 0;
+            b0 <= 0;
             b1 <= 0;
-            b2 <= -b0;
-            
-            // a1 = -2*r*cos(w) - MUST BE BETWEEN -2.0 and 2.0 in Q8.16
-            a1 <= (-cos_out << 1);  // Q1.23 -> Q8.16 (*2)
-            
-            // a2 = r^2 (where r < 1.0)
-            a2 <= (cos_out >>> 9);  // Q1.23 -> Q8.16 (/512)
-            
-            ready <= 1;
-        end
-        else begin
+            b2 <= 0;
+            curr_state <= IDLE;
             ready <= 0;
         end
-    end
-
-    // Range checking assertions (for simulation)
-    always @(posedge clk) begin
-        if (ready) begin
-            if (a1 > MAX_A1 || a1 < MIN_A1) begin
-                $error("a1 out of range! Value: %0d", a1);
+        else 
+        begin
+            case (curr_state)
+            IDLE: 
+            begin
+                if (start) 
+                begin
+                    cordic_start <= 1;
+                    curr_state <= TRIG_CALC;
+                    ready <= 1'b0;
+                end
+                else 
+                begin
+                    ready <= 1'b1;
+                end
             end
-            if (a2 > Q16-1 || a2 < -Q16) begin
-                $error("a2 out of range! Value: %0d", a2);
+            
+            TRIG_CALC: 
+            begin
+                if (cordic_ready)
+                begin
+                    curr_state <= COEFF_CALC;
+                end
             end
+            COEFF_CALC: 
+            begin
+                b0 <= (ONE_IN_FIXED_POINT - cos_out) / 2;
+                b1 <= -(ONE_IN_FIXED_POINT - cos_out);
+                b2 <= (ONE_IN_FIXED_POINT - cos_out) / 2;
+                a0 <= ONE_IN_FIXED_POINT + alpha;
+                a1 <= -(cos_out <<< 1);
+                a2 <= ONE_IN_FIXED_POINT - alpha;
+                curr_state <= IDLE;
+            end
+            // DONE: 
+            // begin
+            //     done <= 1'b0;
+            //     if ()
+            // end
+            default:
+            begin
+                b0 <= 0;
+                b1 <= 0;
+                b2 <= 0;
+                a0 <= 0;
+                a1 <= 0;
+                a2 <= 0;
+                ready <= 0;
+                curr_state <= IDLE;
+            end
+            endcase
         end
+
     end
 endmodule
