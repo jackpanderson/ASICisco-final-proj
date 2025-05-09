@@ -6,3 +6,5 @@ log
 *sim_build
 *results.xml
 .venv
+*.wav
+*.hex

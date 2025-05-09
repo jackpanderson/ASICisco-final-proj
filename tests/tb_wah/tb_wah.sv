@@ -5,7 +5,7 @@ module tb_wah;
     logic [SAMPLE_WIDTH-1:0] sample_in;
     logic system_clock = 0;
     logic rst = 1;
-    logic [3:0] filter_strength_ratio = 4'd8;
+    logic [3:0] filter_strength_ratio = 4'd4;
     logic [SAMPLE_WIDTH-1:0] filter_out;
     logic ready_out;
 
@@ -29,17 +29,20 @@ module tb_wah;
     // Load samples
     initial begin
         $readmemh("wav_data.hex", sample_mem);
+        $dumpfile("waveform.vcd");  // Name of the dump file
+        $dumpvars(0, cordic_sincos_tb);  // Dump all variables in this module and below
     end
 
     // Stimulus
     initial begin
-        rst <= 1;
+        rst = 1;
         repeat(10) @(posedge system_clock);
-        rst <= 0;
+        rst = 0;
+
 
         forever begin
             @(posedge dut.sample_clock);
-            sample_in <= sample_mem[idx];
+            sample_in = sample_mem[idx];
             idx++;
         end
     end
