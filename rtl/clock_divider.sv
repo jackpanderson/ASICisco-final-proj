@@ -3,7 +3,8 @@ module clock_divider (input in_clk,
                       output reg out_clk);
 logic [8:0] counter;
 
-always_ff @(posedge in_clk, posedge rst)
+// always_ff @(posedge in_clk, posedge rst)
+always_ff @(posedge in_clk)
 begin
     if (rst)
     begin

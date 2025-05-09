@@ -62,7 +62,8 @@ module wah #(parameter SAMPLE_WIDTH = 24)
                           .sample_in(sample_in),
                           .sample_out(filter_out));
     
-    always_ff @ (posedge system_clock, posedge sample_clock, posedge rst) begin
+    //always_ff @ (posedge system_clock, posedge sample_clock, posedge rst) begin
+    always_ff @ (posedge system_clock) begin
         if (rst)
             curr_state <= IDLE;
         else 

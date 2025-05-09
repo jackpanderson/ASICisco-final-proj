@@ -9,7 +9,7 @@ module envelope_analyzer #(parameter SAMPLE_WIDTH = 24)
 
     always_comb 
     begin
-        assign aCUMulator = {3'b0, prev_samples[0]} +
+         aCUMulator = {3'b0, prev_samples[0]} +
                             {3'b0, prev_samples[1]} +
                             {3'b0, prev_samples[2]} +
                             {3'b0, prev_samples[3]} +
@@ -18,11 +18,12 @@ module envelope_analyzer #(parameter SAMPLE_WIDTH = 24)
                             {3'b0, prev_samples[6]} +
                             {3'b0, prev_samples[7]};
                             
-        assign shift_acum = aCUMulator >> 3;
-        assign out_sample = shift_acum[SAMPLE_WIDTH - 1:0];   
+         shift_acum = aCUMulator >> 3;
+         out_sample = shift_acum[SAMPLE_WIDTH - 1:0];   
     end
 
-    always_ff @ (posedge sample_clock, posedge rst) 
+    // always_ff @ (posedge sample_clock, posedge rst) 
+    always_ff @ (posedge sample_clock) 
     begin
         if (rst) 
         begin

@@ -1,8 +1,8 @@
 {
-    "DESIGN_NAME": "name",
+    "DESIGN_NAME": "wah",
     "VERILOG_FILES": "dir::rtl/*.sv",
     "CLOCK_PERIOD": 10,
-    "CLOCK_PORT": "clk",
+    "CLOCK_PORT": "system_clock",
     "FP_PDN_VOFFSET": 7,
     "FP_PDN_HOFFSET": 7,
     "FP_PDN_SKIPTRIM": true,

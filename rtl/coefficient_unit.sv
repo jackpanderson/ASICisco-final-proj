@@ -78,7 +78,8 @@ localparam logic signed [23:0] POLE_RADIUS_LIMIT = 24'h7F0000; // ~0.996 in Q8.1
 
 
     // Coefficient calculation - PROPERLY SCALED FOR Q8.16
-    always_ff @(posedge clk or posedge reset) 
+    //always_ff @(posedge clk or posedge reset) 
+    always_ff @(posedge clk) 
     begin
         if (reset) 
         begin

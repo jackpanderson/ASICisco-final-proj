@@ -81,13 +81,14 @@ logic [63:0] shifted_sample;
 
 always_comb 
 begin
-    assign PHATsample_in = {40'b0000000000000000000000000000000000000000, sample_in << 16};
-    assign PHAT_sample_out = a0 * (b0 * PHATsample_in + b1 * bNeg1 + b2 * bNeg2 + aNeg1 * a1 + aNeg2 * a2);
-    assign shifted_sample =  PHAT_sample_out >> 16;  // Shift first
-    assign sample_out = shifted_sample[23:0];
+     PHATsample_in = {40'b0000000000000000000000000000000000000000, sample_in << 16};
+     PHAT_sample_out = a0 * (b0 * PHATsample_in + b1 * bNeg1 + b2 * bNeg2 + aNeg1 * a1 + aNeg2 * a2);
+     shifted_sample =  PHAT_sample_out >> 16;  // Shift first
+     sample_out = shifted_sample[23:0];
 end
 
-always_ff @ (posedge sample_clock, posedge reset)
+// always_ff @ (posedge sample_clock, posedge reset)
+always_ff @ (posedge sample_clock)
 begin
     if (reset)
     begin
