@@ -1,7 +1,7 @@
 runs/
 *.vcd
 *a.out
-*log
+log
 *obj_dir
 *sim_build
 *results.xml

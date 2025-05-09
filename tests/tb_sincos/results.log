@@ -1,0 +1,10 @@
+Angle: 0.000000 rad | sin: -0.003601 | cos: 0.999939
+Angle: 0.785385 rad | sin: 0.710190 | cos: 0.703979
+Angle: 1.570786 rad | sin: 0.999939 | cos: -0.003601
+Angle: 3.141586 rad | sin: 0.985046 | cos: -0.171478
+Angle: -0.785385 rad | sin: -0.703949 | cos: 0.710129
+Angle: -1.570786 rad | sin: -0.999939 | cos: -0.003632
+- sincos_tb.sv:65: Verilog $finish
+- S i m u l a t i o n   R e p o r t: Verilator 5.034 2025-02-24
+- Verilator: $finish at 1us; walltime 0.003 s; speed 337.353 us/s
+- Verilator: cpu 0.004 s on 1 threads; alloced 121 MB
