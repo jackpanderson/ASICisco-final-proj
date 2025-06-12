@@ -1,2 +1,13 @@
 Hello Frank
 Please have mercy on my code
+
+Contributers: Jack P. Anderson
+              Brandon James Thacker
+
+Project overview:
+  This accelerator aims to implement an auto-wah DSP module fully in hardware, with the intent that it could be integrated into a DAW
+  or some larger hardware or software based system. This integration is achivable via RAM macros placed on the input and output of the system,
+  which would allow a connected processor to write audio data to the input memory, then read the audio data back from the output memory once
+  it has all been processed. The system is designed to run on 16 bit, 96kHz audio, which means it processes 96,000 individual samples a second. (wa wa wee wa)
+  For some diagrams about how the technical side of things work, please see the link to the presentation we gave in class:
+  https://docs.google.com/presentation/d/1pZsFiHvfeGVK1_Whsb3XlO2iDR3niKfbn53W0z7qHP0/edit?usp=sharing
